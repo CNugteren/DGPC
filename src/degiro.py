@@ -1,7 +1,7 @@
 import csv
 import datetime
 from pathlib import Path
-from typing import Tuple, List
+from typing import Dict, Tuple, List
 
 import numpy as np
 
@@ -27,7 +27,7 @@ def read_account(account_csv: Path) -> Tuple[List[List[str]], datetime.date]:
 
 
 def parse_account(csv_data: List[List[str]], dates: List[datetime.date]
-                  ) -> Tuple[List[Tuple[np.ndarray, str]], List[Tuple[np.ndarray, str]]]:
+                  ) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]]:
 
     # Initial values
     num_days = len(dates)
@@ -75,14 +75,15 @@ def parse_account(csv_data: List[List[str]], dates: List[datetime.date]
             this_share_value = market.get_data_by_isin(isin, tuple(dates), is_etf=is_etf)
             if this_share_value is None:  # no historical prices available for this stock/etf
                 this_share_value = np.zeros(shape=num_days) + (-mutation / num_shares)
-            print(f"[{date}] {buy_or_sell:4s} {num_shares:4d} @ {this_share_value[date_index] * currency_modifier :8.2f} EUR of {name}")
+            this_share_value_eur = this_share_value[date_index] * currency_modifier
+            print(f"[DGPC] {date}: {buy_or_sell:4s} {num_shares:4d} @ {this_share_value_eur:8.2f} EUR of {name}")
 
             shares_value[date_index:] += multiplier * num_shares * this_share_value[date_index:]
             cash[date_index:] += mutation * currency_modifier
 
         elif description == "Contante Verrekening Aandelen":
             cash[date_index:] += mutation
-            print(f"[{date}] special sell for {mutation} EUR")
+            print(f"[DGPC] {date}: special sell for {mutation} EUR")
 
         elif description == "DEGIRO transactiekosten":
             cash[date_index:] += mutation
@@ -90,8 +91,11 @@ def parse_account(csv_data: List[List[str]], dates: List[datetime.date]
         elif description == "Dividend":
             cash[date_index:] += mutation * currency_modifier
 
-    # Compute the final results
+    # Set the absolute value metrics
     total_account = shares_value + cash
-    absolutes = [(invested, "invested"), (cash, "cash"), (total_account, "total_account")]
-    relatives = [(total_account / invested, "account performance")]
+    absolutes = {"invested": invested, "cash": cash, "total account": total_account}
+
+    # Set the relative metrics
+    performance = np.divide(total_account, invested, out=np.zeros_like(invested), where=invested != 0)
+    relatives = {"account performance":  performance}
     return absolutes, relatives

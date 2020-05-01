@@ -35,14 +35,14 @@ def dgpc(input_file: Path, output_file: Path) -> None:
     dates = [first_date + datetime.timedelta(days=days) for days in range(0, num_days)]
 
     absolute_data, relative_data = degiro.parse_account(csv_data, dates)
-    invested = absolute_data[0][0]
+    invested = absolute_data["invested"]
 
     iwda = market.get_data_by_isin("IE00B4L5Y983", tuple(dates), is_etf=True)
     iwda_invested = compute_reference_invested(iwda, invested)
 
-    absolute_data.append((iwda_invested, "IWDA given investment"))
-    relative_data.append((iwda / iwda[0], "IWDA all-in day one"))
-    relative_data.append((iwda_invested / invested, "IWDA given investment"))
+    absolute_data["IWDA given investment"] = iwda_invested
+    relative_data["IWDA all-in day one"] = iwda / iwda[0]
+    relative_data["IWDA given investment"] = iwda_invested / invested
 
     plot.plot(dates, absolute_data, relative_data, output_file)
 
