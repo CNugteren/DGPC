@@ -6,6 +6,8 @@ DGPC is a small and simple utility that parses CSV-exports from [DeGiro](degiro.
 
 DGPC is not meant for professional usage and makes many assumptions, can't parse all CSV data (yet), and probably also makes a few mistakes and simplifications here and there. So use it at own risk, feel free to make a pull request to improve the tool.
 
+Stock, ETF, and currency data is queried using the `investpy` package, based on data from [Investing.com](investing.com).
+
 ## Requirements
 
 For running the tool itself:

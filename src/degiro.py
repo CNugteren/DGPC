@@ -1,7 +1,8 @@
+"""Parsing functionality of a DeGiro 'Account.csv' file."""
 import csv
 import datetime
 from pathlib import Path
-from typing import Dict, Tuple, List
+from typing import Dict, Sequence, Tuple, List
 
 import numpy as np
 
@@ -11,9 +12,9 @@ from . import market
 # Header of the Account.csv file from DeGiro export
 CSV_HEADER = "Datum,Tijd,Valutadatum,Product,ISIN,Omschrijving,FX,Mutatie,,Saldo,,Order Id"
 
-# If any of these words are found in a shares name, it is considered to be an ETF
-# TODO: Find a more sophisticated way to find out
-SUBSTRINGS_IN_ETF = ["Vanguard", "IShares"]
+# If any of these words (case agnostic) are found in a shares name, it is considered to be an ETF
+SUBSTRINGS_IN_ETF = ["Amundi", "X-TR", "ETFS", "ISHARES", "LYXOR", "Vanguard", "WISDOMTR"]
+# ... ano others, not complete of course
 
 
 def read_account(account_csv: Path) -> Tuple[List[List[str]], datetime.date]:
@@ -26,15 +27,65 @@ def read_account(account_csv: Path) -> Tuple[List[List[str]], datetime.date]:
     return csv_data, first_date
 
 
-def parse_account(csv_data: List[List[str]], dates: List[datetime.date]
-                  ) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]]:
+def parse_single_row(row: List[str], dates: Sequence[datetime.date], date_index: int,
+                     invested: np.ndarray, cash: np.ndarray, shares_value: np.ndarray, bank_cash: np.ndarray) -> None:
+    """Parses a single row of the CSV data, updating all the NumPy arrays (they are both input and output)."""
+
+    date, _, _, name, isin, description, _, currency, mutation_string, _, _, _ = row
+    mutation = float(mutation_string.replace(",", ".")) if mutation_string != '' else 0.0
+    currency_modifier = market.to_euro_modifier(currency, dates)[date_index] if currency not in ("", "EUR") else 1
+
+    if description in ("iDEAL storting",):
+        if bank_cash[date_index] > mutation:
+            bank_cash[date_index:] -= mutation
+        else:
+            invested[date_index:] += (mutation - bank_cash[date_index])
+            cash[date_index:] += (mutation - bank_cash[date_index])
+            bank_cash[date_index:] = 0
+
+    elif description in ("Terugstorting",):
+        bank_cash[date_index:] -= mutation
+
+    elif description.split(" ")[0] in ("Koop", "Verkoop"):
+        buy_or_sell = "sell" if description.split(" ")[0] == "Verkoop" else "buy"
+        multiplier = -1 if buy_or_sell == "sell" else 1
+        num_shares = int(description.split(" ")[1])
+        is_etf = any([etf_subname.lower() in name.lower() for etf_subname in SUBSTRINGS_IN_ETF])
+        this_share_value, _ = market.get_data_by_isin(isin, dates, is_etf=is_etf)
+        if this_share_value is None:  # no historical prices available for this stock/etf
+            this_share_value = np.zeros(shape=len(dates)) + (-mutation / num_shares)
+        this_share_value_eur = this_share_value[date_index] * currency_modifier
+        print(f"[DGPC] {date}: {buy_or_sell:4s} {num_shares:4d} @ {this_share_value_eur:8.2f} EUR of {name}")
+
+        shares_value[date_index:] += multiplier * num_shares * this_share_value[date_index:]
+        cash[date_index:] += mutation * currency_modifier
+
+    elif description == "Contante Verrekening Aandelen":
+        cash[date_index:] += mutation
+        print(f"[DGPC] {date}: special sell for {mutation} EUR")
+
+    elif description == "DEGIRO transactiekosten":
+        cash[date_index:] += mutation
+
+    elif description == "Dividend":
+        cash[date_index:] += mutation * currency_modifier
+
+
+def parse_account(csv_data: List[List[str]], dates: List[datetime.date]) -> Tuple[Dict[str, np.ndarray],
+                                                                                  Dict[str, np.ndarray]]:
+    """Parses the csv-data and constructs NumPy arrays for the given date range with cash value, total account value,
+    and total invested."""
 
     # Initial values
     num_days = len(dates)
     invested = np.zeros(shape=num_days)
     cash = np.zeros(shape=num_days)
     shares_value = np.zeros(shape=num_days)
-    bank_cash = 0
+
+    # We make the assumption that any money going out of the DeGiro account is still on a bank and thus counted here
+    # as cash. This value holds the amount of money on the bank at a given time while parsing, with future cash
+    # deposits reducing this value.
+    bank_cash = np.zeros(shape=num_days)
 
     # Parse the CSV data
     done_parsing = False
@@ -52,44 +103,8 @@ def parse_account(csv_data: List[List[str]], dates: List[datetime.date]
         if done_parsing:
             break
 
-        _, _, _, name, isin, description, _, currency, mutation, _, _, _ = row
-        mutation = float(mutation.replace(",", ".")) if mutation != '' else 0
-        currency_modifier = market.to_euro_modifier(currency, tuple(dates))[date_index] if currency not in ("", "EUR") else 1
-
-        if description in ("iDEAL storting",):
-            if bank_cash > mutation:
-                bank_cash -= mutation
-            else:
-                invested[date_index:] += (mutation - bank_cash)
-                cash[date_index:] += (mutation - bank_cash)
-                bank_cash = 0
-
-        elif description in ("Terugstorting",):
-            bank_cash -= mutation
-
-        elif description.split(" ")[0] in ("Koop", "Verkoop"):
-            buy_or_sell = "sell" if description.split(" ")[0] == "Verkoop" else "buy"
-            multiplier = -1 if buy_or_sell == "sell" else 1
-            num_shares = int(description.split(" ")[1])
-            is_etf = any([etf_subname.lower() in name.lower() for etf_subname in SUBSTRINGS_IN_ETF])
-            this_share_value = market.get_data_by_isin(isin, tuple(dates), is_etf=is_etf)
-            if this_share_value is None:  # no historical prices available for this stock/etf
-                this_share_value = np.zeros(shape=num_days) + (-mutation / num_shares)
-            this_share_value_eur = this_share_value[date_index] * currency_modifier
-            print(f"[DGPC] {date}: {buy_or_sell:4s} {num_shares:4d} @ {this_share_value_eur:8.2f} EUR of {name}")
-
-            shares_value[date_index:] += multiplier * num_shares * this_share_value[date_index:]
-            cash[date_index:] += mutation * currency_modifier
-
-        elif description == "Contante Verrekening Aandelen":
-            cash[date_index:] += mutation
-            print(f"[DGPC] {date}: special sell for {mutation} EUR")
-
-        elif description == "DEGIRO transactiekosten":
-            cash[date_index:] += mutation
-
-        elif description == "Dividend":
-            cash[date_index:] += mutation * currency_modifier
+        parse_single_row(row, tuple(dates), date_index,
+                         invested, cash, shares_value, bank_cash)
 
     # Set the absolute value metrics
     total_account = shares_value + cash

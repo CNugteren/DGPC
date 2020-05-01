@@ -1,17 +1,21 @@
+"""
+Functionality to query market data using the 'investpy' package, querying data from Investing.com.
+"""
 import datetime
 import functools
 from typing import Tuple, Optional
 
 import investpy
 import numpy as np
+from pandas import DataFrame
 
 
 # Countries to consider in order of preference for etf/stock information
 PREFERRED_COUNTRIES = ["netherlands", "united states", "united kingdom"]
 
 
-def densify_history(history, dates: Tuple[datetime.date]) -> np.ndarray:
-    """Expand the history data to include every date in the 'dates' array"""
+def densify_history(history: DataFrame, dates: Tuple[datetime.date]) -> np.ndarray:
+    """Expand the history data to include every date in the 'dates' array."""
     values = np.zeros(shape=len(dates))
     date_index = 0
     for value, date in zip(history["Close"], history["Date"]):
@@ -26,6 +30,8 @@ def densify_history(history, dates: Tuple[datetime.date]) -> np.ndarray:
 
 @functools.lru_cache()
 def to_euro_modifier(currency: str, dates: Tuple[datetime.date]) -> np.ndarray:
+    """Retrieves currency-to-EUR conversion for the given dates. Cached to make sure this is only queried once for
+    a given currency & date-range."""
     from_date = dates[0].strftime("%d/%m/%Y")
     to_date = (dates[-1] + datetime.timedelta(days=7)).strftime("%d/%m/%Y")
     history = investpy.get_currency_cross_historical_data(currency_cross=f"EUR/{currency}",
@@ -36,7 +42,9 @@ def to_euro_modifier(currency: str, dates: Tuple[datetime.date]) -> np.ndarray:
 
 
 @functools.lru_cache()
-def get_data_by_isin(isin: str, dates: Tuple[datetime.date], is_etf: bool) -> Optional[np.ndarray]:
+def get_data_by_isin(isin: str, dates: Tuple[datetime.date], is_etf: bool) -> Tuple[Optional[np.ndarray], str]:
+    """Retrieves stock/ETF prices in EUR by ISIN for the given dates. Cached to make sure this is only queried once for
+    a given currency & date-range."""
     from_date = dates[0].strftime("%d/%m/%Y")
     to_date = (dates[-1] + datetime.timedelta(days=7)).strftime("%d/%m/%Y")
 
@@ -47,31 +55,33 @@ def get_data_by_isin(isin: str, dates: Tuple[datetime.date], is_etf: bool) -> Op
         else:
             data = investpy.search_stocks(by="isin", value=isin)
     except RuntimeError:
-        return None
+        print(f"[DGPC] Warning, could not retrieve {'ETF' if is_etf else 'stock'} data for ISIN {isin}.")
+        return None, ""
 
+    # When a stock/ETF is listed in multiple countries, take one of the preferred countries if found
     for country in PREFERRED_COUNTRIES:
         local_data = data[data["country"] == country]
         if local_data.shape[0] > 0:
             break
     else:
-        country = data["country"][0]  # taking the first country
+        # Taking the first country from the results if none of the preferred countries is found
+        country = data["country"][0]
         local_data = data
 
-    # Retrieves the history for the stock/etf
+    # Retrieves the actual historical prices for the stock/etf
     currency = list(local_data["currency"])[0]
     if is_etf:
         name = list(local_data["name"])[0]
         history = investpy.get_etf_historical_data(name, country=country, from_date=from_date, to_date=to_date)
     else:
-        symbol = list(local_data["symbol"])[0]
-        history = investpy.get_stock_historical_data(symbol, country=country, from_date=from_date, to_date=to_date)
+        name = list(local_data["symbol"])[0]
+        history = investpy.get_stock_historical_data(name, country=country, from_date=from_date, to_date=to_date)
     history = history.reset_index()
-
     values = densify_history(history, dates)
 
-    # Convert to euro
+    # Convert the results to euro
     if currency != "EUR":
         currency_modifier = to_euro_modifier(currency, tuple(dates))
         values *= currency_modifier
 
-    return values
+    return values, name

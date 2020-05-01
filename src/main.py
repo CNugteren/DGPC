@@ -1,3 +1,4 @@
+"""Main DGPC (DeGiro Performance Charts) entry point with argument parser and main function."""
 import argparse
 import datetime
 from pathlib import Path
@@ -11,14 +12,19 @@ from . import plot
 
 
 def parse_arguments() -> Any:
-    """Sets the command-line arguments"""
+    """Sets the command-line arguments."""
     parser = argparse.ArgumentParser(description="DGPC: DeGiro Performance Chart tool")
     parser.add_argument("-i", "--input_file", required=True, help="Location of DeGiro account CSV file", type=Path)
     parser.add_argument("-o", "--output_file", default="dgpc.png", help="Path for output image", type=Path)
+    parser.add_argument("-r", "--reference_isin", default="IE00B4L5Y983",
+                        help="ISIN to plot as reference. By default this is set to IWDA.")
     return vars(parser.parse_args())
 
 
-def compute_reference_invested(reference, invested) -> np.ndarray:
+def compute_reference_invested(reference: np.ndarray, invested: np.ndarray) -> np.ndarray:
+    """Given some amount of cash investment over time, compute the reference stock/ETF's value given that all the
+    invested cash was used to buy the reference stock/ETF at the time when it was available. Assumes partial shares
+    exist."""
     result = np.zeros(shape=reference.shape)
     num_shares = invested[0] / reference[0]
     result += num_shares * reference
@@ -29,23 +35,35 @@ def compute_reference_invested(reference, invested) -> np.ndarray:
     return result
 
 
-def dgpc(input_file: Path, output_file: Path) -> None:
+def dgpc(input_file: Path, output_file: Path, reference_isin: str) -> None:
+    """Main entry point of DGPC after parsing the command-line arguments. This function is the main script, calling all
+    other functions. The input file needs to point to an 'Account.csv' file from DeGiro, whereas the output file path
+    is the location of the resulting chart as PNG file. Furthermore, the reference ISIN can be set."""
+
+    # Preliminaries: read the CSV file and set the date range structure
     csv_data, first_date = degiro.read_account(input_file)
     num_days = (datetime.datetime.now().date() - first_date).days
     dates = [first_date + datetime.timedelta(days=days) for days in range(0, num_days)]
 
+    # Parse the DeGiro account data
     absolute_data, relative_data = degiro.parse_account(csv_data, dates)
     invested = absolute_data["invested"]
 
-    iwda = market.get_data_by_isin("IE00B4L5Y983", tuple(dates), is_etf=True)
-    iwda_invested = compute_reference_invested(iwda, invested)
+    # Add reference data to compare the graph with
+    print(f"[DGPC] Retrieving reference data for {reference_isin}")
+    reference, reference_name = market.get_data_by_isin(reference_isin, tuple(dates), is_etf=True)
+    if reference is None:
+        print(f"[DGPC] Could not find data for reference {reference_isin}: {reference_name}, skipping")
+    else:
+        reference_invested = compute_reference_invested(reference, invested)
+        absolute_data[f"{reference_name}: given investment"] = reference_invested
+        relative_data[f"{reference_name}: all-in day one"] = reference / reference[0]
+        relative_data[f"{reference_name}: given investment"] = reference_invested / invested
 
-    absolute_data["IWDA given investment"] = iwda_invested
-    relative_data["IWDA all-in day one"] = iwda / iwda[0]
-    relative_data["IWDA given investment"] = iwda_invested / invested
-
+    # Plotting the final results
     plot.plot(dates, absolute_data, relative_data, output_file)
 
 
 def main() -> None:
+    """Main entry point of DGPC from the command-line."""
     dgpc(**parse_arguments())
