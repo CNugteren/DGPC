@@ -26,7 +26,10 @@ def densify_history(history, dates: Tuple[datetime.date]) -> np.ndarray:
 
 @functools.lru_cache()
 def to_euro_modifier(currency: str, dates: Tuple[datetime.date]) -> np.ndarray:
-    history = investpy.get_currency_cross_recent_data(currency_cross=f"EUR/{currency}")
+    from_date = dates[0].strftime("%d/%m/%Y")
+    to_date = (dates[-1] + datetime.timedelta(days=7)).strftime("%d/%m/%Y")
+    history = investpy.get_currency_cross_historical_data(currency_cross=f"EUR/{currency}",
+                                                          from_date=from_date, to_date=to_date)
     history = history.reset_index()
     values = densify_history(history, dates)
     return 1 / values
