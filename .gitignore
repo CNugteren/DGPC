@@ -3,4 +3,6 @@ dist/
 *.egg-info/
 __pycache__/
 .mypy_cache/
-
+Account.csv
+dgpc.csv
+dgpc.png
