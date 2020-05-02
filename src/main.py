@@ -2,7 +2,7 @@
 import argparse
 import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, List
 
 import numpy as np
 
@@ -15,7 +15,8 @@ def parse_arguments() -> Any:
     """Sets the command-line arguments."""
     parser = argparse.ArgumentParser(description="DGPC: DeGiro Performance Chart tool")
     parser.add_argument("-i", "--input_file", required=True, help="Location of DeGiro account CSV file", type=Path)
-    parser.add_argument("-o", "--output_file", default="dgpc.png", help="Path for output image", type=Path)
+    parser.add_argument("-p", "--output_png", default="dgpc.png", help="Path for output PNG image", type=Path)
+    parser.add_argument("-c", "--output_csv", default="dgpc.csv", help="Path for output CSV file", type=Path)
     parser.add_argument("-r", "--reference_isin", default="IE00B4L5Y983",
                         help="ISIN to plot as reference. By default this is set to IWDA.")
     return vars(parser.parse_args())
@@ -35,17 +36,33 @@ def compute_reference_invested(reference: np.ndarray, invested: np.ndarray) -> n
     return result
 
 
-def dgpc(input_file: Path, output_file: Path, reference_isin: str) -> None:
+def store_csv(dates: List[datetime.date], absolute_data: Dict[str, np.ndarray],
+              relative_data: Dict[str, np.ndarray], output_file: Path) -> None:
+    """Stores all the collected data as a simple CSV file."""
+    absolutes = list(absolute_data.keys())
+    relatives = list(relative_data.keys())
+    with output_file.open("w") as file:
+        file.write(",".join(["date", *absolutes, *relatives]).replace(" ", "_") + "\n")
+        for date_index, date in enumerate(dates):
+            absolute_vals = [str(round(absolute_data[name][date_index], 2)) for name in absolutes]
+            relative_vals = [str(round(absolute_data[name][date_index], 2)) for name in absolutes]
+            file.write(",".join([str(date), *absolute_vals, *relative_vals]).replace(" ", "_") + "\n")
+
+
+def dgpc(input_file: Path, output_png: Path, output_csv: Path, reference_isin: str) -> None:
     """Main entry point of DGPC after parsing the command-line arguments. This function is the main script, calling all
-    other functions. The input file needs to point to an 'Account.csv' file from DeGiro, whereas the output file path
-    is the location of the resulting chart as PNG file. Furthermore, the reference ISIN can be set."""
+    other functions. The input file needs to point to an 'Account.csv' file from DeGiro, whereas the output file paths
+    are the locations of the resulting chart as PNG file and full data CSV. Furthermore, the reference ISIN can be set.
+    """
 
     # Preliminaries: read the CSV file and set the date range structure
+    print(f"[DGPC] Reading DeGiro data from '{input_file}'")
     csv_data, first_date = degiro.read_account(input_file)
     num_days = (datetime.datetime.now().date() - first_date).days
     dates = [first_date + datetime.timedelta(days=days) for days in range(0, num_days)]
 
     # Parse the DeGiro account data
+    print(f"[DGPC] Parsing DeGiro data with {len(csv_data)} rows from {dates[0]} till {dates[-1]}")
     absolute_data, relative_data = degiro.parse_account(csv_data, dates)
     invested = absolute_data["invested"]
 
@@ -61,7 +78,12 @@ def dgpc(input_file: Path, output_file: Path, reference_isin: str) -> None:
         relative_data[f"{reference_name}: given investment"] = reference_invested / invested
 
     # Plotting the final results
-    plot.plot(dates, absolute_data, relative_data, output_file)
+    print(f"[DGPC] Plotting results as image '{output_png}'")
+    plot.plot(dates, absolute_data, relative_data, output_png)
+
+    # Storing data also as CSV for reference
+    print(f"[DGPC] Storing results also as CSV '{output_csv}'")
+    store_csv(dates, absolute_data, relative_data, output_csv)
 
 
 def main() -> None:

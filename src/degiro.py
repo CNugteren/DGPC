@@ -30,7 +30,7 @@ def read_account(account_csv: Path) -> Tuple[List[List[str]], datetime.date]:
 def parse_single_row(row: List[str], dates: Sequence[datetime.date], date_index: int,
                      invested: np.ndarray, cash: np.ndarray, shares_value: np.ndarray, bank_cash: np.ndarray) -> None:
     """Parses a single row of the CSV data, updating all the NumPy arrays (they are both input and output)."""
-    # pylint: disable=too-many-locals,too-many-arguments
+    # pylint: disable=too-many-locals,too-many-arguments,too-many-statements,too-many-branches
 
     date, _, _, name, isin, description, _, currency, mutation_string, _, _, _ = row
     mutation = float(mutation_string.replace(",", ".")) if mutation_string != '' else 0.0
