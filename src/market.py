@@ -3,7 +3,7 @@ Functionality to query market data using the 'investpy' package, querying data f
 """
 import datetime
 import functools
-from typing import Tuple, Optional
+from typing import Optional, Sequence, Tuple
 
 import investpy
 import numpy as np
@@ -14,16 +14,19 @@ from pandas import DataFrame
 PREFERRED_COUNTRIES = ["netherlands", "united states", "united kingdom"]
 
 
-def densify_history(history: DataFrame, dates: Tuple[datetime.date]) -> np.ndarray:
+def densify_history(history_df: DataFrame, dates: Sequence[datetime.date]) -> np.ndarray:
     """Expand the history data to include every date in the 'dates' array."""
     values = np.zeros(shape=len(dates))
-    date_index = 0
-    for value, date in zip(history["Close"], history["Date"]):
-        while date != dates[date_index]:
-            values[date_index] = value
-            date_index += 1
-            if date_index == len(dates):
-                return values
+    df_dates = list(history_df["Date"])
+    df_close = list(history_df["Close"])
+    previous_value = df_close[0]
+    for date_index, date in enumerate(dates):
+        if date in df_dates:
+            df_index = df_dates.index(dates[date_index])
+            value = df_close[df_index]
+            previous_value = value
+        else:
+            value = previous_value
         values[date_index] = value
     return values
 

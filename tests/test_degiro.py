@@ -36,8 +36,8 @@ def test_parse_buy_and_sell() -> None:
 
     absolute_data, _ = degiro.parse_account(csv_data, dates)
     np.testing.assert_allclose(absolute_data["invested"], [0, 500, 500, 500, 500])
-    np.testing.assert_allclose(absolute_data["cash"], [0, 402.348405, 402.348405, 630.790292, 630.790292])
-    np.testing.assert_allclose(absolute_data["total account"], [0, 502.523659, 497.304103, 630.790292, 630.790292])
+    np.testing.assert_allclose(absolute_data["cash"], [0, 402.816779, 402.816779, 632.661502, 632.661502])
+    np.testing.assert_allclose(absolute_data["total account"], [0, 499.720938, 502.992033, 632.661502, 632.661502])
 
 
 def test_parse_transaction_costs() -> None:
