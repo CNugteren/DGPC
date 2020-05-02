@@ -30,6 +30,7 @@ def read_account(account_csv: Path) -> Tuple[List[List[str]], datetime.date]:
 def parse_single_row(row: List[str], dates: Sequence[datetime.date], date_index: int,
                      invested: np.ndarray, cash: np.ndarray, shares_value: np.ndarray, bank_cash: np.ndarray) -> None:
     """Parses a single row of the CSV data, updating all the NumPy arrays (they are both input and output)."""
+    # pylint: disable=too-many-locals,too-many-arguments
 
     date, _, _, name, isin, description, _, currency, mutation_string, _, _, _ = row
     mutation = float(mutation_string.replace(",", ".")) if mutation_string != '' else 0.0
@@ -88,20 +89,19 @@ def parse_account(csv_data: List[List[str]], dates: List[datetime.date]) -> Tupl
     bank_cash = np.zeros(shape=num_days)
 
     # Parse the CSV data
-    done_parsing = False
     date_index = 0
     for row in csv_data[1:][::-1]:
-        date = row[0]
-        if date == "":
+
+        # Retrieves the data of this CSV row
+        if row[0] == "":
             continue
-        row_date = datetime.datetime.strptime(date, "%d-%m-%Y").date()
-        while row_date != dates[date_index]:
+        date = datetime.datetime.strptime(row[0], "%d-%m-%Y").date()
+
+        # Advance the date till we reach the date of the CSV entry
+        while date != dates[date_index]:
             date_index += 1
             if date_index == num_days:
-                done_parsing = True
-                break
-        if done_parsing:
-            break
+                raise RuntimeError(f"CSV date {date} larger than dates list (up to {dates[-1]}")
 
         parse_single_row(row, tuple(dates), date_index,
                          invested, cash, shares_value, bank_cash)

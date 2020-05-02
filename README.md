@@ -12,7 +12,7 @@ Stock, ETF, and currency data is queried using the `investpy` package, based on 
 
 For running the tool itself:
 * Python 3.7 or newer
-* Several Python packages, run `pip3 -r requirements.txt` to install
+* Several Python packages, run `pip3 install -r requirements.txt` to install
 
 For running the tests and linters, you also need `pytest`, `mypy`, and `pylint`.
 
