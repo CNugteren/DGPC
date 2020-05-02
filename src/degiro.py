@@ -36,6 +36,8 @@ def parse_single_row(row: List[str], dates: Sequence[datetime.date], date_index:
     mutation = float(mutation_string.replace(",", ".")) if mutation_string != '' else 0.0
     currency_modifier = market.to_euro_modifier(currency, dates)[date_index] if currency not in ("", "EUR") else 1
 
+    # ----- Cash in and out -----
+
     if description in ("iDEAL storting",):
         if bank_cash[date_index] > mutation:
             bank_cash[date_index:] -= mutation
@@ -46,6 +48,8 @@ def parse_single_row(row: List[str], dates: Sequence[datetime.date], date_index:
 
     elif description in ("Terugstorting",):
         bank_cash[date_index:] -= mutation
+
+    # ----- Buying and selling -----
 
     elif description.split(" ")[0] in ("Koop", "Verkoop"):
         buy_or_sell = "sell" if description.split(" ")[0] == "Verkoop" else "buy"
@@ -65,11 +69,47 @@ def parse_single_row(row: List[str], dates: Sequence[datetime.date], date_index:
         cash[date_index:] += mutation
         print(f"[DGPC] {date}: special sell for {mutation} EUR")
 
+    # ----- DeGiro usage costs -----
+
     elif description == "DEGIRO transactiekosten":
         cash[date_index:] += mutation
 
+    elif "DEGIRO Aansluitingskosten" in description:
+        cash[date_index:] += mutation
+
+    elif "Externe Kosten" in description:
+        cash[date_index:] += mutation * currency_modifier
+
+    elif "Stamp Duty" in description:
+        cash[date_index:] += mutation * currency_modifier
+
+    # ----- Dividend -----
+
     elif description == "Dividend":
         cash[date_index:] += mutation * currency_modifier
+
+    elif "dividendbelasting" in description.lower():
+        cash[date_index:] += mutation * currency_modifier
+
+    # ----- Implications of cash on the DeGiro account -----
+
+    elif "Koersverandering geldmarktfonds" in description:
+        cash[date_index:] += mutation * currency_modifier
+
+    elif description == "DEGIRO Geldmarktfondsen Compensatie":
+        cash[date_index:] += mutation * currency_modifier
+
+    elif "Conversie geldmarktfonds" in description:
+        pass  # Nothing to do?
+
+    # ----- Others -----
+
+    elif description in ("Valuta Creditering", "Valuta Debitering"):
+        pass  # Nothing to do - already taken into account?
+
+    else:
+        print(f"[DGPC] {date}: Unsupported type of entry '{description}', contents:")
+        print(row)
 
 
 def parse_account(csv_data: List[List[str]], dates: List[datetime.date]) -> Tuple[Dict[str, np.ndarray],
