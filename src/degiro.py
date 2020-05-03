@@ -130,6 +130,7 @@ def parse_account(csv_data: List[List[str]], dates: List[datetime.date]) -> Tupl
 
     # Parse the CSV data
     date_index = 0
+    stop_parsing = False
     for row in csv_data[1:][::-1]:
 
         # Retrieves the data of this CSV row
@@ -141,7 +142,12 @@ def parse_account(csv_data: List[List[str]], dates: List[datetime.date]) -> Tupl
         while date != dates[date_index]:
             date_index += 1
             if date_index == num_days:
-                raise RuntimeError(f"CSV date {date} larger than dates list (up to {dates[-1]}")
+                print(f"[DGPC] Warning, CSV date {date} larger than dates range (up to {dates[-1]}), skipping data")
+                stop_parsing = True
+                break
+
+        if stop_parsing:
+            break
 
         parse_single_row(row, tuple(dates), date_index,
                          invested, cash, shares_value, bank_cash)

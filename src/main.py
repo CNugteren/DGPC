@@ -11,12 +11,24 @@ from . import market
 from . import plot
 
 
+def parse_date(date_string: str) -> datetime.date:
+    """Helper to parse a datetime.date from the command line."""
+    try:
+        return datetime.datetime.strptime(date_string, "%d-%m-%Y").date()
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"Not a valid date: '{date_string}'")
+
+
 def parse_arguments() -> Any:
     """Sets the command-line arguments."""
     parser = argparse.ArgumentParser(description="DGPC: DeGiro Performance Chart tool")
     parser.add_argument("-i", "--input_file", required=True, help="Location of DeGiro account CSV file", type=Path)
     parser.add_argument("-p", "--output_png", default="dgpc.png", help="Path for output PNG image", type=Path)
     parser.add_argument("-c", "--output_csv", default="dgpc.csv", help="Path for output CSV file", type=Path)
+    parser.add_argument("-e", "--end_date", help="End date for plotting, as DD-MM-YYYY", type=parse_date,
+                        default=datetime.datetime.now().date())
+    parser.add_argument("-s", "--start_date", help="Start date for plotting, as DD-MM-YYYY", type=parse_date,
+                        default=datetime.date(2000, 1, 1))
     parser.add_argument("-r", "--reference_isin", default="IE00B4L5Y983",
                         help="ISIN to plot as reference. By default this is set to IWDA.")
     return vars(parser.parse_args())
@@ -49,22 +61,34 @@ def store_csv(dates: List[datetime.date], absolute_data: Dict[str, np.ndarray],
             file.write(",".join([str(date), *absolute_vals, *relative_vals]).replace(" ", "_") + "\n")
 
 
-def dgpc(input_file: Path, output_png: Path, output_csv: Path, reference_isin: str) -> None:
+def dgpc(input_file: Path, output_png: Path, output_csv: Path, end_date: datetime.date, start_date: datetime.date,
+         reference_isin: str) -> None:
     """Main entry point of DGPC after parsing the command-line arguments. This function is the main script, calling all
     other functions. The input file needs to point to an 'Account.csv' file from DeGiro, whereas the output file paths
     are the locations of the resulting chart as PNG file and full data CSV. Furthermore, the reference ISIN can be set.
     """
+    # pylint: disable=too-many-arguments,too-many-locals
 
     # Preliminaries: read the CSV file and set the date range structure
     print(f"[DGPC] Reading DeGiro data from '{input_file}'")
     csv_data, first_date = degiro.read_account(input_file)
-    num_days = (datetime.datetime.now().date() - first_date).days
+    num_days = (end_date - first_date).days
     dates = [first_date + datetime.timedelta(days=days) for days in range(0, num_days)]
 
     # Parse the DeGiro account data
     print(f"[DGPC] Parsing DeGiro data with {len(csv_data)} rows from {dates[0]} till {dates[-1]}")
     absolute_data, relative_data = degiro.parse_account(csv_data, dates)
-    invested = absolute_data["invested"]
+
+    # Filter out all values before the chosen 'start_date' (default: today)
+    if start_date in dates:
+        print(f"[DGPC] Filtering out all data from before {start_date}")
+        first_index = dates.index(start_date)
+        dates = dates[first_index:]
+        for name, values in absolute_data.items():
+            absolute_data[name] = values[first_index:]
+        # Relative data is recalculated to start at 0% performance at the given start date
+        invested_restart = absolute_data["invested"] + absolute_data["total account"][0] - absolute_data["invested"][0]
+        relative_data["account performance"] = absolute_data["total account"] / invested_restart
 
     # Add reference data to compare the graph with
     print(f"[DGPC] Retrieving reference data for {reference_isin}")
@@ -72,10 +96,10 @@ def dgpc(input_file: Path, output_png: Path, output_csv: Path, reference_isin: s
     if reference is None:
         print(f"[DGPC] Could not find data for reference {reference_isin}: {reference_name}, skipping")
     else:
-        reference_invested = compute_reference_invested(reference, invested)
+        reference_invested = compute_reference_invested(reference, absolute_data["invested"])
         absolute_data[f"{reference_name}: given investment"] = reference_invested
         relative_data[f"{reference_name}: all-in day one"] = reference / reference[0]
-        relative_data[f"{reference_name}: given investment"] = reference_invested / invested
+        relative_data[f"{reference_name}: given investment"] = reference_invested / absolute_data["invested"]
 
     # Plotting the final results
     print(f"[DGPC] Plotting results as image '{output_png}'")
