@@ -51,6 +51,8 @@ Current options available in the tool:
       -s START_DATE, --start_date START_DATE
                             Start date for plotting, as DD-MM-YYYY (default: 2000-01-01)
       -r REFERENCE_ISIN, --reference_isin REFERENCE_ISIN
-                            ISIN to plot as reference. By default this is set to IWDA. (default: IE00B4L5Y983)
+                            ISIN to plot as reference, by default this is set to IWDA (default: IE00B4L5Y983)
       -y PNG_HEIGHT_PIXELS, --png_height_pixels PNG_HEIGHT_PIXELS
-                            Height of image in pixels, width is determined with the standard 16:9 aspect ratio. (default: 1080)
+                            Height of image in pixels, width is determined with the standard 16:9 aspect ratio (default: 1080)
+      --plot_hide_eur_values
+                            Hides absolute EUR values in the plot, e.g. for privacy reasons (default: False)

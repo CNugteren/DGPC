@@ -25,9 +25,11 @@ def get_colour(label: str) -> Optional[str]:
 
 
 def plot(dates: List[datetime.date], absolute_data: Dict[str, np.ndarray],
-         relative_data: Dict[str, np.ndarray], output_file: Path, plot_size_y: int = 1080) -> None:
+         relative_data: Dict[str, np.ndarray], output_file: Path, plot_size_y: int = 1080,
+         hide_eur_values: bool = False) -> None:
     """Creates a two-sub-plot with a shared x-axis with absolute data on top (measured in EUR), and relative data in
     the bottom (measured in percentages). The plot size can be determined in pixels with a standard 16:9 aspect ratio"""
+    # pylint: disable=too-many-arguments
 
     # Sets the plotting sizes
     plot_size_x = plot_size_y * 16 / 9
@@ -47,6 +49,8 @@ def plot(dates: List[datetime.date], absolute_data: Dict[str, np.ndarray],
     plt.ylabel("EUR")
     plt.xticks(x_values[::x_label_freq], labels="" * len(x_values[::x_label_freq]))
     axis.set_xlim(xmin=0, xmax=len(x_values))
+    if hide_eur_values:
+        axis.yaxis.set_ticklabels([])
     plt.grid(True)
     plt.legend(loc="upper left")
 
