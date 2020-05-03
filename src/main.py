@@ -21,7 +21,8 @@ def parse_date(date_string: str) -> datetime.date:
 
 def parse_arguments() -> Any:
     """Sets the command-line arguments."""
-    parser = argparse.ArgumentParser(description="DGPC: DeGiro Performance Chart tool")
+    parser = argparse.ArgumentParser(description="DGPC: DeGiro Performance Chart tool",
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("-i", "--input_file", required=True, help="Location of DeGiro account CSV file", type=Path)
     parser.add_argument("-p", "--output_png", default="dgpc.png", help="Path for output PNG image", type=Path)
     parser.add_argument("-c", "--output_csv", default="dgpc.csv", help="Path for output CSV file", type=Path)
