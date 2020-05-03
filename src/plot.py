@@ -25,11 +25,14 @@ def get_colour(label: str) -> Optional[str]:
 
 
 def plot(dates: List[datetime.date], absolute_data: Dict[str, np.ndarray],
-         relative_data: Dict[str, np.ndarray], output_file: Path, num_labels_x: int = 24) -> None:
+         relative_data: Dict[str, np.ndarray], output_file: Path, plot_size_y: int = 1080) -> None:
     """Creates a two-sub-plot with a shared x-axis with absolute data on top (measured in EUR), and relative data in
-    the bottom (measured in percentages)."""
+    the bottom (measured in percentages). The plot size can be determined in pixels with a standard 16:9 aspect ratio"""
 
-    plt.figure(figsize=(19.2, 10.8))
+    # Sets the plotting sizes
+    plot_size_x = plot_size_y * 16 / 9
+    plt.figure(figsize=(plot_size_x / 100, plot_size_y / 100))
+    num_labels_x = int(plot_size_x // 80)  # roughly every 80 pixels one x-label
 
     # Sets the x-data
     x_label_freq = max(1, len(dates) // num_labels_x)
@@ -58,6 +61,11 @@ def plot(dates: List[datetime.date], absolute_data: Dict[str, np.ndarray],
     plt.grid(True)
     plt.legend(loc="upper left")
 
+    # Larger plots can do with smaller margins
+    if plot_size_y > 800:
+        plt.subplots_adjust(left=0.05, right=0.98, top=0.95, bottom=0.10, hspace=0.05)
+    else:
+        plt.subplots_adjust(left=0.09, right=0.96, top=0.93, bottom=0.16, hspace=0.05)
+
     # Final output to file
-    plt.subplots_adjust(left=0.05, right=0.98, top=0.95, bottom=0.10, hspace=0.05)
     plt.savefig(output_file, dpi=100)

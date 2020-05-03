@@ -73,12 +73,12 @@ def get_data_by_isin(isin: str, dates: Tuple[datetime.date], is_etf: bool) -> Tu
 
     # Retrieves the actual historical prices for the stock/etf
     currency = list(local_data["currency"])[0]
+    symbol = list(local_data["symbol"])[0]
     if is_etf:
         name = list(local_data["name"])[0]
         history = investpy.get_etf_historical_data(name, country=country, from_date=from_date, to_date=to_date)
     else:
-        name = list(local_data["symbol"])[0]
-        history = investpy.get_stock_historical_data(name, country=country, from_date=from_date, to_date=to_date)
+        history = investpy.get_stock_historical_data(symbol, country=country, from_date=from_date, to_date=to_date)
     history = history.reset_index()
     values = densify_history(history, dates)
 
@@ -87,4 +87,4 @@ def get_data_by_isin(isin: str, dates: Tuple[datetime.date], is_etf: bool) -> Tu
         currency_modifier = to_euro_modifier(currency, tuple(dates))
         values *= currency_modifier
 
-    return values, name
+    return values, symbol

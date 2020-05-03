@@ -29,8 +29,10 @@ def parse_arguments() -> Any:
                         default=datetime.datetime.now().date())
     parser.add_argument("-s", "--start_date", help="Start date for plotting, as DD-MM-YYYY", type=parse_date,
                         default=datetime.date(2000, 1, 1))
-    parser.add_argument("-r", "--reference_isin", default="IE00B4L5Y983",
+    parser.add_argument("-r", "--reference_isin", default="IE00B4L5Y983", type=str,
                         help="ISIN to plot as reference. By default this is set to IWDA.")
+    parser.add_argument("-y", "--png_height_pixels", default=1080, type=int,
+                        help="Height of image in pixels, width is determined with the standard 16:9 aspect ratio.")
     return vars(parser.parse_args())
 
 
@@ -62,7 +64,7 @@ def store_csv(dates: List[datetime.date], absolute_data: Dict[str, np.ndarray],
 
 
 def dgpc(input_file: Path, output_png: Path, output_csv: Path, end_date: datetime.date, start_date: datetime.date,
-         reference_isin: str) -> None:
+         reference_isin: str, png_height_pixels: int) -> None:
     """Main entry point of DGPC after parsing the command-line arguments. This function is the main script, calling all
     other functions. The input file needs to point to an 'Account.csv' file from DeGiro, whereas the output file paths
     are the locations of the resulting chart as PNG file and full data CSV. Furthermore, the reference ISIN can be set.
@@ -103,7 +105,7 @@ def dgpc(input_file: Path, output_png: Path, output_csv: Path, end_date: datetim
 
     # Plotting the final results
     print(f"[DGPC] Plotting results as image '{output_png}'")
-    plot.plot(dates, absolute_data, relative_data, output_png)
+    plot.plot(dates, absolute_data, relative_data, output_png, plot_size_y=png_height_pixels)
 
     # Storing data also as CSV for reference
     print(f"[DGPC] Storing results also as CSV '{output_csv}'")
