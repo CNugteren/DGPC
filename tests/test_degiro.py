@@ -18,9 +18,9 @@ def test_parse_cash_addition() -> None:
     ]))
     dates = [datetime.date(2020, 3, 9) + datetime.timedelta(days=days) for days in range(0, 4)]
 
-    absolute_data, _ = degiro.parse_account(csv_data, dates)
-    np.testing.assert_equal(absolute_data["invested"], absolute_data["cash"])
-    np.testing.assert_equal(absolute_data["invested"], [0, 500, 500, 1500])
+    abs_data, _ = degiro.parse_account(csv_data, dates)
+    np.testing.assert_equal(abs_data["nominal account (without profit/loss)"], abs_data["cash in DeGiro account"])
+    np.testing.assert_equal(abs_data["nominal account (without profit/loss)"], [0, 500, 500, 1500])
 
 
 def test_parse_buy_and_sell() -> None:
@@ -34,10 +34,10 @@ def test_parse_buy_and_sell() -> None:
     ]))
     dates = [datetime.date(2017, 7, 10) + datetime.timedelta(days=days) for days in range(0, 5)]
 
-    absolute_data, _ = degiro.parse_account(csv_data, dates)
-    np.testing.assert_allclose(absolute_data["invested"], [0, 500, 500, 500, 500])
-    np.testing.assert_allclose(absolute_data["cash"], [0, 402.816779, 402.816779, 632.661502, 632.661502])
-    np.testing.assert_allclose(absolute_data["total account"], [0, 499.720938, 502.992033, 632.661502, 632.661502])
+    abs_data, _ = degiro.parse_account(csv_data, dates)
+    np.testing.assert_allclose(abs_data["nominal account (without profit/loss)"], [0, 500, 500, 500, 500])
+    np.testing.assert_allclose(abs_data["cash in DeGiro account"], [0, 402.816779, 402.816779, 632.661502, 632.661502])
+    np.testing.assert_allclose(abs_data["total account value"], [0, 499.720938, 502.992033, 632.661502, 632.661502])
 
 
 def test_parse_transaction_costs() -> None:
@@ -51,7 +51,7 @@ def test_parse_transaction_costs() -> None:
     ]))
     dates = [datetime.date(2017, 7, 10) + datetime.timedelta(days=days) for days in range(0, 3)]
 
-    absolute_data, _ = degiro.parse_account(csv_data, dates)
-    np.testing.assert_allclose(absolute_data["invested"], [0, 500, 500])
-    np.testing.assert_allclose(absolute_data["cash"], [0, 500, 497.38])
-    np.testing.assert_allclose(absolute_data["total account"], [0, 500, 497.38])
+    abs_data, _ = degiro.parse_account(csv_data, dates)
+    np.testing.assert_allclose(abs_data["nominal account (without profit/loss)"], [0, 500, 500])
+    np.testing.assert_allclose(abs_data["cash in DeGiro account"], [0, 500, 497.38])
+    np.testing.assert_allclose(abs_data["total account value"], [0, 500, 497.38])

@@ -11,16 +11,16 @@ from matplotlib import pyplot as plt
 
 def get_colour(label: str) -> Optional[str]:
     """Given the label of the thing to plot, determine the colour."""
-    if "account" in label:
-        return "green"
     if "given investment" in label:
         return "orange"
     if "all-in day one" in label:
         return "blue"
     if "cash" in label:
         return "red"
-    if "invested" in label:
+    if "nominal account" in label:
         return "magenta"
+    if "account" in label:
+        return "green"
     return None
 
 

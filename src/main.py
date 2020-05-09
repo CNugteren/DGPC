@@ -92,8 +92,9 @@ def dgpc(input_file: Path, output_png: Path, output_csv: Path, end_date: datetim
         for name, values in absolute_data.items():
             absolute_data[name] = values[first_index:]
         # Relative data is recalculated to start at 0% performance at the given start date
-        invested_restart = absolute_data["invested"] + absolute_data["total account"][0] - absolute_data["invested"][0]
-        relative_data["account performance"] = absolute_data["total account"] / invested_restart
+        invested = absolute_data["nominal account (without profit/loss)"]
+        invested_restart = invested + absolute_data["total account value"][0] - invested[0]
+        relative_data["account performance"] = absolute_data["total account value"] / invested_restart
 
     # Add reference data to compare the graph with
     print(f"[DGPC] Retrieving reference data for {reference_isin}")
@@ -101,10 +102,11 @@ def dgpc(input_file: Path, output_png: Path, output_csv: Path, end_date: datetim
     if reference is None:
         print(f"[DGPC] Could not find data for reference {reference_isin}: {reference_name}, skipping")
     else:
-        reference_invested = compute_reference_invested(reference, absolute_data["invested"])
+        invested = absolute_data["nominal account (without profit/loss)"]
+        reference_invested = compute_reference_invested(reference, invested)
         absolute_data[f"{reference_name}: given investment"] = reference_invested
         relative_data[f"{reference_name}: all-in day one"] = reference / reference[0]
-        relative_data[f"{reference_name}: given investment"] = reference_invested / absolute_data["invested"]
+        relative_data[f"{reference_name}: given investment"] = reference_invested / invested
 
     # Plotting the final results
     print(f"[DGPC] Plotting results as image '{output_png}'")
