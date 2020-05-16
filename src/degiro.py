@@ -54,7 +54,7 @@ def parse_single_row(row: List[str], dates: Sequence[datetime.date], date_index:
     elif description.split(" ")[0] in ("Koop", "Verkoop"):
         buy_or_sell = "sell" if description.split(" ")[0] == "Verkoop" else "buy"
         multiplier = -1 if buy_or_sell == "sell" else 1
-        num_shares = int(description.split(" ")[1])
+        num_shares = int(description.split(" ")[1].replace(".", ""))
         is_etf = any([etf_subname.lower() in name.lower() for etf_subname in SUBSTRINGS_IN_ETF])
         this_share_value, _ = market.get_data_by_isin(isin, dates, is_etf=is_etf)
         if this_share_value is None:  # no historical prices available for this stock/etf
