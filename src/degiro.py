@@ -59,8 +59,8 @@ def parse_single_row(row: List[str], dates: Sequence[datetime.date], date_index:
         this_share_value, _ = market.get_data_by_isin(isin, dates, is_etf=is_etf)
         if this_share_value is None:  # no historical prices available for this stock/etf
             this_share_value = np.zeros(shape=len(dates)) + (-mutation / num_shares)
-        this_share_value_eur = this_share_value[date_index] * currency_modifier
-        print(f"[DGPC] {date}: {buy_or_sell:4s} {num_shares:4d} @ {this_share_value_eur:8.2f} EUR of {name}")
+
+        print(f"[DGPC] {date}: {buy_or_sell:4s} {num_shares:4d} @ {this_share_value[date_index]:8.2f} EUR of {name}")
 
         shares_value[date_index:] += multiplier * num_shares * this_share_value[date_index:]
         cash[date_index:] += mutation * currency_modifier
