@@ -38,7 +38,7 @@ def parse_single_row(row: List[str], dates: Sequence[datetime.date], date_index:
 
     # ----- Cash in and out -----
 
-    if description in ("iDEAL storting",):
+    if description in ("iDEAL storting", "Storting"):
         if bank_cash[date_index] > mutation:
             bank_cash[date_index:] -= mutation
         else:
