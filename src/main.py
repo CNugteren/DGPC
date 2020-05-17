@@ -77,6 +77,7 @@ def dgpc(input_file: Path, output_png: Path, output_csv: Path, end_date: datetim
     # Preliminaries: read the CSV file and set the date range structure
     print(f"[DGPC] Reading DeGiro data from '{input_file}'")
     csv_data, first_date = degiro.read_account(input_file)
+
     num_days = (end_date - first_date).days
     dates = [first_date + datetime.timedelta(days=days) for days in range(0, num_days)]
 
@@ -116,6 +117,10 @@ def dgpc(input_file: Path, output_png: Path, output_csv: Path, end_date: datetim
     # Storing data also as CSV for reference
     print(f"[DGPC] Storing results also as CSV '{output_csv}'")
     store_csv(dates, absolute_data, relative_data, output_csv)
+
+    # Print balances on end date
+    print(f"[DGPC] Total account value at { dates[-1] }: €{absolute_data['total account value'][-1]:.2f}")
+    print(f"[DGPC] (Un)realized gain at { dates[-1] }: €{absolute_data['profit/loss'][-1]:.2f}")
 
 
 def main() -> None:
