@@ -99,6 +99,12 @@ def parse_single_row(row: List[str], dates: Sequence[datetime.date], date_index:
     elif description == "DEGIRO Geldmarktfondsen Compensatie":
         cash[date_index:] += mutation * currency_modifier
 
+    elif description == "Fondsuitkering":
+        cash[date_index:] += mutation * currency_modifier
+
+    elif description == "Rente":
+        cash[date_index:] += mutation * currency_modifier
+
     elif "Conversie geldmarktfonds" in description:
         pass  # Nothing to do?
 
