@@ -118,10 +118,6 @@ def dgpc(input_file: Path, output_png: Path, output_csv: Path, end_date: datetim
     print(f"[DGPC] Storing results also as CSV '{output_csv}'")
     store_csv(dates, absolute_data, relative_data, output_csv)
 
-    # Print balances on end date
-    print(f"[DGPC] Total account value at { dates[-1] }: €{absolute_data['total account value'][-1]:.2f}")
-    print(f"[DGPC] (Un)realized gain at { dates[-1] }: €{absolute_data['profit/loss'][-1]:.2f}")
-
 
 def main() -> None:
     """Main entry point of DGPC from the command-line."""

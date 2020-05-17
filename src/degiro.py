@@ -162,8 +162,7 @@ def parse_account(csv_data: List[List[str]], dates: List[datetime.date]) -> Tupl
     total_account = shares_value + cash
     absolutes = {"nominal account (without profit/loss)": invested,
                  "cash in DeGiro account": cash,
-                 "total account value": total_account,
-                 "profit/loss": total_account - invested}
+                 "total account value": total_account}
 
     # Set the relative metrics
     performance = np.divide(total_account, invested, out=np.zeros_like(invested), where=invested != 0)
