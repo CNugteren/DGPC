@@ -77,6 +77,7 @@ def dgpc(input_file: Path, output_png: Path, output_csv: Path, end_date: datetim
     # Preliminaries: read the CSV file and set the date range structure
     print(f"[DGPC] Reading DeGiro data from '{input_file}'")
     csv_data, first_date = degiro.read_account(input_file)
+
     num_days = (end_date - first_date).days
     dates = [first_date + datetime.timedelta(days=days) for days in range(0, num_days)]
 

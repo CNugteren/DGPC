@@ -38,7 +38,7 @@ def parse_single_row(row: List[str], dates: Sequence[datetime.date], date_index:
 
     # ----- Cash in and out -----
 
-    if description in ("iDEAL storting",):
+    if description in ("iDEAL storting", "Storting"):
         if bank_cash[date_index] > mutation:
             bank_cash[date_index:] -= mutation
         else:
@@ -54,13 +54,13 @@ def parse_single_row(row: List[str], dates: Sequence[datetime.date], date_index:
     elif description.split(" ")[0] in ("Koop", "Verkoop"):
         buy_or_sell = "sell" if description.split(" ")[0] == "Verkoop" else "buy"
         multiplier = -1 if buy_or_sell == "sell" else 1
-        num_shares = int(description.split(" ")[1])
+        num_shares = int(description.split(" ")[1].replace(".", ""))
         is_etf = any([etf_subname.lower() in name.lower() for etf_subname in SUBSTRINGS_IN_ETF])
         this_share_value, _ = market.get_data_by_isin(isin, dates, is_etf=is_etf)
         if this_share_value is None:  # no historical prices available for this stock/etf
             this_share_value = np.zeros(shape=len(dates)) + (-mutation / num_shares)
-        this_share_value_eur = this_share_value[date_index] * currency_modifier
-        print(f"[DGPC] {date}: {buy_or_sell:4s} {num_shares:4d} @ {this_share_value_eur:8.2f} EUR of {name}")
+
+        print(f"[DGPC] {date}: {buy_or_sell:4s} {num_shares:4d} @ {this_share_value[date_index]:8.2f} EUR of {name}")
 
         shares_value[date_index:] += multiplier * num_shares * this_share_value[date_index:]
         cash[date_index:] += mutation * currency_modifier
@@ -97,6 +97,12 @@ def parse_single_row(row: List[str], dates: Sequence[datetime.date], date_index:
         cash[date_index:] += mutation * currency_modifier
 
     elif description == "DEGIRO Geldmarktfondsen Compensatie":
+        cash[date_index:] += mutation * currency_modifier
+
+    elif description == "Fondsuitkering":
+        cash[date_index:] += mutation * currency_modifier
+
+    elif description == "Rente":
         cash[date_index:] += mutation * currency_modifier
 
     elif "Conversie geldmarktfonds" in description:
@@ -160,5 +166,6 @@ def parse_account(csv_data: List[List[str]], dates: List[datetime.date]) -> Tupl
 
     # Set the relative metrics
     performance = np.divide(total_account, invested, out=np.zeros_like(invested), where=invested != 0)
+
     relatives = {"account performance":  performance}
     return absolutes, relatives
