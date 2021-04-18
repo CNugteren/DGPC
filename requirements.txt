@@ -2,7 +2,7 @@ certifi==2020.4.5.1
 chardet==3.0.4
 cycler==0.10.0
 idna==2.9
-investpy==0.9.14
+investpy==1.0.6
 kiwisolver==1.2.0
 lxml==4.6.3
 matplotlib==3.2.1
