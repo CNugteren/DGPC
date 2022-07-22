@@ -7,7 +7,7 @@ DGPC is a small and simple utility that parses CSV-exports from [DeGiro](degiro.
 The tool displays:
 * In green, the total value of the DeGiro account, including current stock prices, dividend, fees, cash, etc. This is the sum of the cash balance (in red, see below) and the current value of stock/ETF (not shown).
 * In magenta, the total nominal account value: money transferred in to the DeGiro account, not taking into account losses or profits.
-* In red, the cash balance: cash on the DeGiro account plus optional 'bank cash' if money is transferred out. Note that if cash is booked in and invested as stocks on the same day, it will not show up in the graph.
+* In red, the cash balance: cash on the DeGiro account. Note that if cash is booked in and invested as stocks on the same day, it will not show up in the graph.
 * In orange, a benchmark (default IWDA ETF) assuming all invested money was invested in this instead at time of availability.
 * In blue, the same benchmark, but now assuming all available money was invested on day 0.
 

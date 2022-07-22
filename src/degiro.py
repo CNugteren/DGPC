@@ -2,7 +2,7 @@
 import csv
 import datetime
 from pathlib import Path
-from typing import Dict, Sequence, Tuple, List
+from typing import NamedTuple, Sequence, Tuple, List
 
 import numpy as np
 
@@ -17,6 +17,15 @@ SUBSTRINGS_IN_ETF = ["Amundi", "X-TR", "ETFS", "ISHARES", "LYXOR", "Vanguard", "
 # ... ano others, not complete of course
 
 
+class ParsedData(NamedTuple):
+    """Tuple holding all data parsed from account data"""
+    invested: np.ndarray
+    cash: np.ndarray
+    deposits: np.ndarray
+    shares_value: np.ndarray
+    total_account: np.ndarray
+
+
 def read_account(account_csv: Path) -> Tuple[List[List[str]], datetime.date]:
     """Opens a DeGiro 'Account.csv' file and returns the contents as well as the first date"""
     csv_data = list(csv.reader(account_csv.open()))
@@ -28,7 +37,7 @@ def read_account(account_csv: Path) -> Tuple[List[List[str]], datetime.date]:
 
 
 def parse_single_row(row: List[str], dates: Sequence[datetime.date], date_index: int,
-                     invested: np.ndarray, cash: np.ndarray, shares_value: np.ndarray, bank_cash: np.ndarray) -> None:
+                     invested: np.ndarray, cash: np.ndarray, deposits: np.ndarray, shares_value: np.ndarray) -> None:
     """Parses a single row of the CSV data, updating all the NumPy arrays (they are both input and output)."""
     # pylint: disable=too-many-locals,too-many-arguments,too-many-statements,too-many-branches
 
@@ -39,15 +48,14 @@ def parse_single_row(row: List[str], dates: Sequence[datetime.date], date_index:
     # ----- Cash in and out -----
 
     if description in ("iDEAL storting", "Storting"):
-        if bank_cash[date_index] > mutation:
-            bank_cash[date_index:] -= mutation
-        else:
-            invested[date_index:] += (mutation - bank_cash[date_index])
-            cash[date_index:] += (mutation - bank_cash[date_index])
-            bank_cash[date_index:] = 0
+        deposits[date_index] = mutation
+        invested[date_index:] += mutation
+        cash[date_index:] += mutation
 
     elif description in ("Terugstorting",):
-        bank_cash[date_index:] -= mutation
+        deposits[date_index] = mutation
+        invested[date_index:] += mutation
+        cash[date_index:] += mutation
 
     # ----- Buying and selling -----
 
@@ -118,21 +126,16 @@ def parse_single_row(row: List[str], dates: Sequence[datetime.date], date_index:
         print(row)
 
 
-def parse_account(csv_data: List[List[str]], dates: List[datetime.date]) -> Tuple[Dict[str, np.ndarray],
-                                                                                  Dict[str, np.ndarray]]:
-    """Parses the csv-data and constructs NumPy arrays for the given date range with cash value, total account value,
-    and total invested."""
+def parse_account(csv_data: List[List[str]], dates: List[datetime.date]) -> ParsedData:
+    """Parses the csv-data and constructs NumPy arrays for the given date range with invested money, cash value, the
+    deposits, the shares value and the total account value."""
 
     # Initial values
     num_days = len(dates)
     invested = np.zeros(shape=num_days)
     cash = np.zeros(shape=num_days)
+    deposits = np.zeros(shape=num_days)
     shares_value = np.zeros(shape=num_days)
-
-    # We make the assumption that any money going out of the DeGiro account is still on a bank and thus counted here
-    # as cash. This value holds the amount of money on the bank at a given time while parsing, with future cash
-    # deposits reducing this value.
-    bank_cash = np.zeros(shape=num_days)
 
     # Parse the CSV data
     date_index = 0
@@ -156,16 +159,7 @@ def parse_account(csv_data: List[List[str]], dates: List[datetime.date]) -> Tupl
             break
 
         parse_single_row(row, tuple(dates), date_index,
-                         invested, cash, shares_value, bank_cash)
+                         invested, cash, deposits, shares_value)
 
-    # Set the absolute value metrics
     total_account = shares_value + cash
-    absolutes = {"nominal account (without profit/loss)": invested,
-                 "cash in DeGiro account": cash,
-                 "total account value": total_account}
-
-    # Set the relative metrics
-    performance = np.divide(total_account, invested, out=np.zeros_like(invested), where=invested != 0)
-
-    relatives = {"account performance":  performance}
-    return absolutes, relatives
+    return ParsedData(invested, cash, deposits, shares_value, total_account)

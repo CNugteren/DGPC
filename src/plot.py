@@ -17,7 +17,7 @@ def get_colour(label: str) -> Optional[str]:
         return "blue"
     if "cash" in label:
         return "red"
-    if "nominal account" in label:
+    if "nominal account" in label or "time-weighted-return" in label:
         return "magenta"
     if "account" in label:
         return "green"
@@ -58,7 +58,7 @@ def plot(dates: List[datetime.date], absolute_data: Dict[str, np.ndarray],
     plt.subplot(212)
     axis = plt.gca()
     for name, values in relative_data.items():
-        plt.plot(x_values, 100 * values - 100, label=name, color=get_colour(name))
+        plt.plot(x_values, values * 100, label=name, color=get_colour(name))
     plt.ylabel("Performance (%)")
     plt.xticks(x_values[::x_label_freq], labels=dates[::x_label_freq], rotation=45)
     axis.set_xlim(xmin=0, xmax=len(x_values))

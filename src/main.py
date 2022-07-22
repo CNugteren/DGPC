@@ -39,6 +39,41 @@ def parse_arguments() -> Any:
     return vars(parser.parse_args())
 
 
+def compute_absolutes(data: degiro.ParsedData) -> Dict[str, np.ndarray]:
+    """Sets all the absolute values we want to plot."""
+    return {
+        "nominal account (without profit/loss)": data.invested,
+        "cash in DeGiro account": data.cash,
+        "total account value": data.total_account,
+    }
+
+
+def compute_relatives(data: degiro.ParsedData) -> Dict[str, np.ndarray]:
+    """Sets all the relative values we want to plot. For the TWR, this follows the computation from:
+    https://www.fool.com/about/how-to-calculate-investment-returns/"""
+    num_days = data.invested.shape[0]  # or any other array - they are all the same size
+
+    # Set the relative metrics
+    performance = np.divide(data.total_account, data.invested,
+                            out=np.zeros_like(data.invested), where=data.invested != 0) - 1
+
+    # Computes the daily returns adjusted for deposits
+    returns = (data.total_account[1:] / (data.total_account[:-1] + data.deposits[1:])) - 1
+    returns = np.concatenate([[0], returns])
+
+    # Computes the time-weighted-returns
+    running_twr = 1
+    twr = np.zeros(num_days)
+    for i in range(num_days):
+        running_twr *= (1 + returns[i])
+        twr[i] = running_twr - 1
+
+    return {
+        "account performance": performance,
+        "time-weighted-return": twr
+    }
+
+
 def compute_reference_invested(reference: np.ndarray, invested: np.ndarray) -> np.ndarray:
     """Given some amount of cash investment over time, compute the reference stock/ETF's value given that all the
     invested cash was used to buy the reference stock/ETF at the time when it was available. Assumes partial shares
@@ -83,7 +118,11 @@ def dgpc(input_file: Path, output_png: Path, output_csv: Path, end_date: datetim
 
     # Parse the DeGiro account data
     print(f"[DGPC] Parsing DeGiro data with {len(csv_data)} rows from {dates[0]} till {dates[-1]}")
-    absolute_data, relative_data = degiro.parse_account(csv_data, dates)
+    parsed_account_data = degiro.parse_account(csv_data, dates)
+
+    # Compute the values we want to plot
+    absolute_data = compute_absolutes(parsed_account_data)
+    relative_data = compute_relatives(parsed_account_data)
 
     # Filter out all values before the chosen 'start_date' (default: today)
     if start_date in dates:
